@@ -1,0 +1,20 @@
+# .github/custom_release_config.yml
+
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+      - automation
+  categories:
+    - title: Breaking Changes
+      labels:
+        - breaking-change
+    - title: Exciting New Features
+      labels:
+        - enhancement
+    - title: Bug Fix
+      labels:
+        - bug
+    - title: Other Changes
+      labels:
+        - "*"

@@ -3,24 +3,25 @@ on:
     branches:
       - master
 
-name: build-release
+name: build
 
 jobs:
   build:
-    name: build-release
+    name: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@master
+        uses: actions/checkout@3.5.2
 
       - name: Setup Node.js
         uses: actions/setup-node@v1
         with:
           node-version: "16.x"
 
-      - run: sudo npm i -g @vercel/ncc
-
-      - run: npm install 
+      - name: Install dependencies
+        run: |
+          sudo npm i -g @vercel/ncc
+          npm install 
 
       - name: Compile files
         run: |
@@ -33,7 +34,7 @@ jobs:
           git config --local user.name "GitHub Action"
 
           git add dist/index.js -f
-          git commit -m "Add changes"
+          git commit -m "Build index.js"
 
       - name: Push changes
         uses: ad-m/github-push-action@master

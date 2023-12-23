@@ -1,0 +1,85 @@
+name: Release
+run-name: Release for ${{ github.event.inputs.target }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_version:
+        description: 'The target release version'
+        required: true
+    
+      major_version:
+        type: choice
+        description: 'The major version'
+        options:
+          - v1
+
+jobs: 
+  prepare-release: 
+    name: Draft a release
+    runs-on: ubuntu-latest 
+    steps: 
+      - name: Checkout to master branch
+        uses: actions/checkout@v3.5.2
+        with:
+          ref: master
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Bump version
+        continue-on-error: true
+        run: |
+          npm version ${{ github.event.inputs.target_version }}
+          git push origin master
+
+      - uses: actions/checkout@v3.5.2
+        with:
+          ref: "releases/${{ github.event.inputs.major_version }}"
+      
+      - name: Fast-forward release branch to master
+        run: |
+          git checkout
+          git merge master --ff-only
+          git push origin releases/${{ github.event.inputs.major_version }}
+
+      - name: Get last version
+        uses: actions/github-script@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: get-last-version
+        with:
+          script: |
+            const release = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            })
+            console.log(`Last version is ${release.data.name}`)
+            core.setOutput('last_version', release.data.name)
+
+      - name: Create a new draft release
+        uses: actions/github-script@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          script: |
+            const notes = await github.rest.repos.generateReleaseNotes({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: `${{ github.event.inputs.target_version }}`,
+              target_commitish: `releases/${{ github.event.inputs.major_version }}`,
+              previous_tag_name: `${{ steps.get-last-version.outputs.last_version }}`,
+              configuration_file_path: '.github/custom_release_config.yml'
+            })
+
+            github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: `${{ github.event.inputs.target_version }}`,
+              target_commitish: `releases/${{ github.event.inputs.major_version }}`,
+              name: notes.data.name,
+              body: notes.data.body,
+              draft: true
+            })
